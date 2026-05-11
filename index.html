@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scream Premium</title>
+    <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
+    <style>
+        :root { --main-bg: #ffffff; --text-color: #000000; --accent: #0088cc; }
+        body { background-color: var(--main-bg); color: var(--text-color); font-family: sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; transition: 0.5s; }
+        
+        /* شاشة الدخول (بيضاء) */
+        #loginScreen { display: flex; flex-direction: column; align-items: center; }
+        
+        /* الشاشة الرئيسية (تكون مخفية في البداية) */
+        #mainApp { display: none; width: 100%; max-width: 500px; padding: 20px; text-align: center; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .attempts-box { background: #f0f8ff; padding: 10px 20px; border-radius: 10px; border: 1px solid #0088cc; font-weight: bold; }
+
+        textarea { width: 100%; height: 150px; border: 2px solid #ddd; border-radius: 15px; padding: 15px; font-size: 16px; margin-bottom: 15px; box-sizing: border-box; outline: none; }
+        textarea:focus { border-color: var(--accent); }
+
+        button { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-size: 1rem; transition: 0.3s; }
+        .btn-send { background-color: #ff4d4d; color: white; margin-bottom: 10px; }
+        .btn-buy { background-color: #28a745; color: white; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        #ton-connect-button { margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen">
+        <h1>مرحباً بك في Scream</h1>
+        <p>يرجى ربط محفظتك للدخول</p>
+        <div id="ton-connect-button"></div>
+    </div>
+
+    <div id="mainApp">
+        <div class="header">
+            <h2>لوحة الكتابة</h2>
+            <div class="attempts-box">المحاولات: <span id="attemptsCount">0</span></div>
+        </div>
+
+        <textarea id="ventInput" placeholder="اكتب ما بداخلك هنا..."></textarea>
+        
+        <button id="sendBtn" class="btn-send" onclick="useAttempt()">إرسال الصرخة (تستهلك 1 محاولة)</button>
+        <button class="btn-buy" onclick="buyAttempts()">شراء محاولات (0.3 TON لكل محاولة)</button>
+        <p style="font-size: 12px; color: #666; margin-top: 10px;">كل محاولة شراء تمنحك حق كتابة صرخة واحدة مجهولة.</p>
+    </div>
+
+    <script>
+        let attempts = 0;
+        const myWallet = "UQANtRoXP8-c5QC4Mhib-BGqJs4TJdt7Q3CFD2e-s4fKfABc"; // محفظة التون الخاصة بك
+
+        // إعداد TON Connect
+        const tonConnectUI = new TONConnectUI.TonConnectUI({
+            manifestUrl: 'https://ton-connect.github.io/demo-dapp-with-react/tonconnect-manifest.json',
+            buttonRootId: 'ton-connect-button'
+        });
+
+        // مراقبة الاتصال
+        tonConnectUI.onStatusChange(wallet => {
+            if (wallet) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                document.body.style.backgroundColor = "#ffffff"; // ضمان بقاء الخلفية بيضاء
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('mainApp').style.display = 'none';
+            }
+        });
+
+        // وظيفة شراء المحاولات
+        async function buyAttempts() {
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 600,
+                messages: [{
+                    address: myWallet,
+                    amount: "300000000", // 0.3 TON
+                }]
+            };
+
+            try {
+                const result = await tonConnectUI.sendTransaction(transaction);
+                if(result) {
+                    attempts++;
+                    updateUI();
+                    alert("شكراً لك! تم إضافة محاولة واحدة.");
+                }
+            } catch (e) {
+                alert("فشلت عملية الشراء أو تم إلغاؤها.");
+            }
+        }
+
+        // وظيفة استخدام المحاولة
+        function useAttempt() {
+            const text = document.getElementById('ventInput').value;
+            if (!text) return alert("اكتب شيئاً أولاً!");
+            
+            if (attempts > 0) {
+                attempts--;
+                updateUI();
+                alert("تم إرسال صرختك بنجاح! متبقي لديك " + attempts + " محاولات.");
+                document.getElementById('ventInput').value = "";
+            } else {
+                alert("ليس لديك محاولات كافية. يرجى شراء محاولات جديدة.");
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('attemptsCount').innerText = attempts;
+            document.getElementById('sendBtn').disabled = (attempts === 0);
+        }
+    </script>
+</body>
+</html>
